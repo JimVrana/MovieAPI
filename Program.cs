@@ -1,3 +1,5 @@
+using MovieAPI.Data;
+
 namespace MovieAPI
 {
     public class Program
@@ -8,14 +10,22 @@ namespace MovieAPI
 
             // Add services to the container.
             builder.Services.AddAuthorization();
+            builder.Services.AddMvcCore();
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
+            builder.Services.AddHttpClient();
 
 
             var app = builder.Build();
 
+          //  if (app.Environment.IsDevelopment())
+         //   {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+          //  }
             // Configure the HTTP request pipeline.
 
             app.UseHttpsRedirection();
-
             app.UseAuthorization();
 
             var summaries = new[]
@@ -35,6 +45,9 @@ namespace MovieAPI
                     .ToArray();
                 return forecast;
             });
+
+            DataGenerator d = new DataGenerator(builder.Configuration["api_key"]);
+
 
             app.Run();
         }

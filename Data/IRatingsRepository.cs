@@ -4,10 +4,10 @@ namespace MovieAPI.Data
 {
     public interface IRatingsRepository
     {
-        Task<IEnumerable<MovieRating>> GetRatingsByMovie(string Title);
+        Task<MovieRating> GetMovieRatingById(int Id);
         Task<IEnumerable<MovieRating>> GetMovieRatingsByMovie(int Id);
         Task<MovieRating> InsertMovieRating(MovieRating rating);
         Task<MovieRating> UpdateMovieRating(MovieRating rating);
-        bool DeleteMovieRating(int id);
+        Task<MovieRating> DeleteMovieRating(int id);
     }
 }

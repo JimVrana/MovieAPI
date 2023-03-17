@@ -6,11 +6,11 @@ namespace MovieAPI.Data
     {
         Task<IEnumerable<Actor>> GetActors();
         Task<IEnumerable<Actor>> GetActorByName(string Name);
-        Task<IEnumerable<Actor>> GetActorByMovie(string title);
-        Task<Actor> GetActorById(int id);
-        Task<Actor> InsertActor(Actor actor);
+        Task<IEnumerable<Actor>> GetActorsByMovie(int MovieId);
+        Task<Actor> GetActorById(int Id);
+        Task<Actor> InsertActor(Actor actor, int MovieId);
         Task<Actor> UpdateActor(Actor actor);
-        Task<Actor> DeleteActor(int id);
+        Task<Actor> DeleteActor(int Id);
 
     }
 }

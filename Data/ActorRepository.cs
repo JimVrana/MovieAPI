@@ -33,9 +33,20 @@ namespace MovieAPI.Data
             return await _apiContext.Actors.FindAsync(id);
         }
 
-        public async Task<IEnumerable<Actor>> GetActorByMovie(string title)
+        public async Task<IEnumerable<Actor>> GetActorsByMovie(int MovieId)
         {
-            throw new NotImplementedException();
+            //join the Actors/Movies/Relations tables
+            var query = from a in _apiContext.Actors
+                        join rel in _apiContext.ActorMovieRelations
+                        on a.Id equals rel.ActorId
+                        join m in _apiContext.Movies
+                        on rel.MovieId equals m.Id
+                        where m.Id == MovieId
+                        select a;
+
+            var result  = await query.ToListAsync().ConfigureAwait(false);                
+
+            return result; 
         }
 
         public async Task<IEnumerable<Actor>> GetActorByName(string Name)
@@ -48,9 +59,12 @@ namespace MovieAPI.Data
             return await _apiContext.Actors.ToListAsync();
         }
 
-        public async Task<Actor> InsertActor(Actor actor)
+        public async Task<Actor> InsertActor(Actor actor, int MovieId)
         {
             _apiContext.Actors.Add(actor);
+
+            //Add the relation every time an actor is added
+            _apiContext.ActorMovieRelations.Add(new ActorMovieRelation { ActorId = actor.Id, MovieId = MovieId});
             await _apiContext.SaveChangesAsync();
             return actor;
         }

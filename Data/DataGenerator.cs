@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using MovieAPI.Models;
+using MovieAPI.Models.TMDBModels;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Http.Headers;
 using System.Numerics;
@@ -13,77 +15,62 @@ namespace MovieAPI.Data
     /// </summary>
     public class DataGenerator
     {
-        static string apiKey; 
+        static string apiKey;
         static HttpClient client = new HttpClient();
         private readonly ApiContext _apiContext;
         public DataGenerator(string apikey, ApiContext context)
         {
             apiKey = apikey;
             _apiContext = context;
-            GetDataFromTMDB().GetAwaiter().GetResult();
+            GetDataFromTMDB2().GetAwaiter().GetResult();
         }
 
-         async Task GetDataFromTMDB()
+        async Task GetDataFromTMDB2()
         {
             client.BaseAddress = new Uri("https://api.themoviedb.org/3/");
             client.DefaultRequestHeaders.Accept.Clear();
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));          
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
             //we're going to start with a single actor with a known id, Brendan Fraser, id = 18269
             Models.TMDBModels.Actor a = await GetActorAsync(18269);
 
             //Get all of the movies that our chosen actor has appeared in
             Models.TMDBModels.MovieCreditsForActor m = await GetAllMoviesForActor(a.id);
-            List<Models.TMDBModels.Actor> actors = new List<Models.TMDBModels.Actor>();
-            List<MovieRating> ratings = new List<MovieRating>();
 
-            //Just to limit the sample data imported
-            int numberOfMoviesToImport = 5;
-            int moviesImported = 0;
-
-            //For each movie found, import all actors that appeared in those movies, and ratings 
-            foreach (var cast in m.cast)
-            {
-                if (moviesImported == numberOfMoviesToImport)
-                    break;
-                Models.TMDBModels.MovieCredits movieCredits = await GetAllActorsInMovie(cast.id);
-                foreach (var actorItem in movieCredits.cast)
-                {
-                    actors.Add(await GetActorAsync(actorItem.id));
-                }
-
-                //get and convert the ratings 
-                Models.TMDBModels.Review review = await GetAllRatingsForMovie(cast.id);
-                foreach (var result  in review.results)
-                {
-                    ratings.Add(new MovieRating { MovieId = review.id, UserId = result.author_details.username, Rating = result.author_details.rating });
-                }
-                moviesImported++;
-            }
-
-            //LoadAllDataIntoContext
-            //foreach (var act in actors)
-            //{
-            //    _apiContext.Actors.Add(new Actor { Id = act.id, Birthday = act.birthday, Gender = act.gender, Name = act.name});
-
-
-            //}
-            List<Actor> ApiActors = actors.Select(o => new Actor { Id = o.id, Birthday = o.birthday, Gender = o.gender, Name = o.name }).DistinctBy(ApiActors => ApiActors.Id).ToList();
-          //  List<Actor> ApiActorsDistinct = ApiActors.DistinctBy(ApiActors =>ApiActors.Id).ToList();
-
-            _apiContext.Actors.AddRange(ApiActors);
-
-            List<Movie> ApiMovies = m.cast.Select(o => new Movie { Id = o.id, Overview = o.overview, Title = o.title, Release_date = o.release_date }).ToList();
-            _apiContext.Movies.AddRange(ApiMovies.Distinct());
-
-            //foreach (var mov in m.cast)
-            //{
-            //    _apiContext.Movies.Add(new Movie { Id = mov.id, Overview = mov.overview, Title = mov.title, Release_date = mov.release_date });
-            //}
-            _apiContext.MovieRatings.AddRange(ratings);
-
+            List<Movie> ApiMovies = m.cast.Select(o => new Movie { TMDBId = o.id, Overview = o.overview, Title = o.title, Release_date = o.release_date }).ToList();
+            _apiContext.Movies.AddRange(ApiMovies);
             _apiContext.SaveChanges();
 
+            foreach (var movie in _apiContext.Movies)
+            {
+                Models.TMDBModels.MovieCredits movieCredits = await GetAllActorsInMovie(movie.TMDBId);
+                var Actors = movieCredits.cast.Select(o => new Models.Actor { TMDBId = o.id, Gender = o.gender, Name = o.name }).ToList();
+
+                foreach (var act in Actors)
+                {
+                    //check if the actor already exists
+                    var existingActor = _apiContext.Actors.FirstOrDefault(a => a.TMDBId == act.TMDBId); 
+                    if (existingActor == null) {
+                        _apiContext.Actors.Add(act);
+                        _apiContext.ActorMovieRelations.Add(new ActorMovieRelation { ActorId = act.Id, MovieId = movie.Id });
+                    }
+                    else
+                    {
+                        _apiContext.ActorMovieRelations.Add(new ActorMovieRelation { ActorId = existingActor.Id, MovieId = movie.Id });
+                    }
+
+                    _apiContext.SaveChanges();
+                }
+
+                Models.TMDBModels.Review reviews = await GetAllRatingsForMovie(movie.TMDBId);
+
+                List<MovieRating> ratings = new List<MovieRating>();
+                foreach (var result in reviews.results)
+                {
+                    _apiContext.MovieRatings.Add(new MovieRating { MovieTMDBId = reviews.id, UserId = result.author_details.username, Rating = result.author_details.rating, MovieId = movie.Id });
+                    _apiContext.SaveChanges();
+                }
+            }
         }
 
 

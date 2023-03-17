@@ -1,4 +1,5 @@
 ﻿
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MovieAPI.Data;
 using MovieAPI.Models;
@@ -24,6 +25,20 @@ namespace ActorAPI.Controllers
             try
             {
                 return Ok(await _actorRepository.GetActors());
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "Error retrieving data from the database");
+            }
+        }
+
+        [HttpGet]
+        [Route("GetAllActorsInMovie/{Id}")]
+        public async Task<IActionResult> GetAllActorsInMovie(int Id)
+        {
+            try
+            {
+                return Ok(await _actorRepository.GetActorsByMovie(Id));
             }
             catch (Exception)
             {
@@ -71,15 +86,16 @@ namespace ActorAPI.Controllers
             }
         }
 
+        [Authorize]
         [HttpPost]
-        public async Task<ActionResult<Actor>> CreateActor([FromBody] Actor Actor)
+        public async Task<ActionResult<Actor>> CreateActor([FromBody] Actor Actor, int MovieId)
         {
             try
             {
                 if (Actor == null)
                     return BadRequest();
 
-                var createdActor = await _actorRepository.InsertActor(Actor);
+                var createdActor = await _actorRepository.InsertActor(Actor, MovieId);
 
                 return CreatedAtAction(nameof(GetActorById),
                     new { id = createdActor.Id }, createdActor);
@@ -90,6 +106,7 @@ namespace ActorAPI.Controllers
             }
         }
 
+        [Authorize]
         [HttpPut("{id}")]
         public async Task<ActionResult<Actor>> Update([FromBody] Actor Actor)
         {
@@ -112,6 +129,7 @@ namespace ActorAPI.Controllers
             }
         }
 
+        [Authorize]
         [HttpDelete("{id:int}")]
         public async Task<ActionResult<Actor>> DeleteActor(int id)
         {

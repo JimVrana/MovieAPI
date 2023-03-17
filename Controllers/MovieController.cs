@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using MovieAPI.Data;
 using MovieAPI.Models;
 
@@ -55,7 +56,7 @@ namespace MovieAPI.Controllers
         {
             try
             {
-                var result = await _movieRepository.GetMovieByTitle(Title);
+                var result = await _movieRepository.GetMoviesByTitle(Title);
 
                 if (result == null)
                 {
@@ -69,6 +70,21 @@ namespace MovieAPI.Controllers
             }
         }
 
+        [HttpGet]
+        [Route("GetMoviesByActor/{Id}")]
+        public async Task<IActionResult> GetMoviesByActor(int Id)
+        {
+            try
+            {
+                return Ok(await _movieRepository.GetMoviesByActor(Id));
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "Error retrieving data from the database");
+            }
+        }
+
+        [Authorize]
         [HttpPost]
         public async Task<ActionResult<Movie>>CreateMovie([FromBody] Movie movie)
         {
@@ -88,6 +104,7 @@ namespace MovieAPI.Controllers
             }
         }
 
+        [Authorize]
         [HttpPut("{id}")]
         public async Task<ActionResult<Movie>> Update([FromBody] Movie movie)
         {
@@ -110,6 +127,7 @@ namespace MovieAPI.Controllers
             }
         }
 
+        [Authorize]
         [HttpDelete("{id:int}")]
         public async Task<ActionResult<Movie>> DeleteMovie(int id)
         {
@@ -121,7 +139,7 @@ namespace MovieAPI.Controllers
                 {
                     return NotFound($"Movie with Id = {id} not found");
                 }
-
+         
                 return await _movieRepository.DeleteMovie(id);
             }
             catch (Exception)

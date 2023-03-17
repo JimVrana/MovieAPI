@@ -20,7 +20,6 @@
 
     public class Actor  //Person
     {
-        public string birthday { get; set; }
         public int gender { get; set; }
         public int id { get; set; }
         public string name { get; set; }

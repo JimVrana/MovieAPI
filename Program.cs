@@ -1,4 +1,10 @@
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 using MovieAPI.Data;
+using Swashbuckle.AspNetCore.SwaggerUI;
+using System;
+using System.Runtime.CompilerServices;
 
 namespace MovieAPI
 {
@@ -9,47 +15,52 @@ namespace MovieAPI
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
+            builder.Services.AddScoped<IMovieRepository, MovieRepository>();
+            builder.Services.AddScoped<IActorRepository, ActorRepository>();
+            builder.Services.AddDbContext<ApiContext>();
+            builder.Services.AddControllers();
             builder.Services.AddAuthorization();
             builder.Services.AddMvcCore();
             builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
+            builder.Services.AddSwaggerGen(options =>
+            {
+                options.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Title = "WEB API",
+                    Version = "v1"
+                });
+            });
             builder.Services.AddHttpClient();
 
 
             var app = builder.Build();
+            AddMovieData(app);
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "WEB API");
+                c.DocumentTitle = "WEB API";
+                c.DocExpansion(DocExpansion.List);
+            });
 
-          //  if (app.Environment.IsDevelopment())
-         //   {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-          //  }
             // Configure the HTTP request pipeline.
 
             app.UseHttpsRedirection();
+            app.UseRouting();
             app.UseAuthorization();
-
-            var summaries = new[]
+            app.UseEndpoints(endpoints =>
             {
-            "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-        };
-
-            app.MapGet("/weatherforecast", (HttpContext httpContext) =>
-            {
-                var forecast = Enumerable.Range(1, 5).Select(index =>
-                    new WeatherForecast
-                    {
-                        Date = DateTime.Now.AddDays(index),
-                        TemperatureC = Random.Shared.Next(-20, 55),
-                        Summary = summaries[Random.Shared.Next(summaries.Length)]
-                    })
-                    .ToArray();
-                return forecast;
+                endpoints.MapControllers();
             });
-
-            DataGenerator d = new DataGenerator(builder.Configuration["api_key"]);
-
-
             app.Run();
         }
+
+        static void AddMovieData(WebApplication app)
+        {
+            var scope = app.Services.CreateScope();
+            var db = scope.ServiceProvider.GetService<ApiContext>();
+            new DataGenerator("11e45a81871955fb85ee72a3c269720f", db);
+        }
+
     }
 }

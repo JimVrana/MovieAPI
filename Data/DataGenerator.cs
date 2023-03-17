@@ -15,14 +15,15 @@ namespace MovieAPI.Data
     {
         static string apiKey; 
         static HttpClient client = new HttpClient();
-
-        public DataGenerator(string apikey)
+        private readonly ApiContext _apiContext;
+        public DataGenerator(string apikey, ApiContext context)
         {
             apiKey = apikey;
-            GetData().GetAwaiter().GetResult();
+            _apiContext = context;
+            GetDataFromTMDB().GetAwaiter().GetResult();
         }
 
-        static async Task GetData()
+         async Task GetDataFromTMDB()
         {
             client.BaseAddress = new Uri("https://api.themoviedb.org/3/");
             client.DefaultRequestHeaders.Accept.Clear();
@@ -59,7 +60,33 @@ namespace MovieAPI.Data
                 }
                 moviesImported++;
             }
+
+            //LoadAllDataIntoContext
+            //foreach (var act in actors)
+            //{
+            //    _apiContext.Actors.Add(new Actor { Id = act.id, Birthday = act.birthday, Gender = act.gender, Name = act.name});
+
+
+            //}
+            List<Actor> ApiActors = actors.Select(o => new Actor { Id = o.id, Birthday = o.birthday, Gender = o.gender, Name = o.name }).DistinctBy(ApiActors => ApiActors.Id).ToList();
+          //  List<Actor> ApiActorsDistinct = ApiActors.DistinctBy(ApiActors =>ApiActors.Id).ToList();
+
+            _apiContext.Actors.AddRange(ApiActors);
+
+            List<Movie> ApiMovies = m.cast.Select(o => new Movie { Id = o.id, Overview = o.overview, Title = o.title, Release_date = o.release_date }).ToList();
+            _apiContext.Movies.AddRange(ApiMovies.Distinct());
+
+            //foreach (var mov in m.cast)
+            //{
+            //    _apiContext.Movies.Add(new Movie { Id = mov.id, Overview = mov.overview, Title = mov.title, Release_date = mov.release_date });
+            //}
+            _apiContext.MovieRatings.AddRange(ratings);
+
+            _apiContext.SaveChanges();
+
         }
+
+
 
         /// <summary>
         /// Get Actor by Id, from TMDB.com
